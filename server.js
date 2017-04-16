@@ -1,7 +1,6 @@
 /*jshint esversion: 6*/
 const http = require('http');
 const fs = require('fs');
-const querystring = require('querystring');
 
 const getMethod = (path, res) => {
   if (path.indexOf('/css') === 0) {
@@ -58,7 +57,7 @@ const writeCSSResponse = (data, res) => {
   });
   res.end(data);
 };
-//--------------------------------------------------------------------------------------------
+
 const postMethod = (body, res) => {
   const bodyData = body.toString().split('&');
   const bodyObj = {};
@@ -67,14 +66,25 @@ const postMethod = (body, res) => {
     bodyObj[bodyData[i].split('=')[0]] = bodyData[i].split('=')[1].split("+").join(' ');
   }
 
-  if (bodyObj.hasOwnProperty('elementName') && bodyObj.hasOwnProperty('elementSymbol') && bodyObj.hasOwnProperty('elementAtomicNumber') && bodyObj.hasOwnProperty('elementDescription')) {
+  if (checkBodyObj(bodyObj)) {
     createFile(bodyObj, res);
   } else {
     sendError(res);
   }
 };
 
-
+const putMethod = (body, req, res) => {
+  if (checkExistance(req.url)) {
+    editExistingFile(body, req, res);
+  } else {
+    let errorMsg = JSON.stringify({"error": "resource " + req.url + " does not exist"});
+    res.writeHead(500, {
+      'Content-Length' : errorMsg.length,
+      'Content-Type': 'application/json'
+    });
+    res.end(errorMsg);
+  }
+};
 
 const server = http.createServer((req, res) => {
   switch(req.method) {
@@ -91,6 +101,9 @@ const server = http.createServer((req, res) => {
       }
       break;
     case 'PUT' :
+      req.on('data', (data) => {
+          putMethod(data, req, res);
+        });
       break;
     case 'DELETE' :
       break;
@@ -102,17 +115,22 @@ server.listen(8888, () => {
 });
 
 const createFile = (bodyObj, res) => {
-  fs.writeFile(`public/${bodyObj.elementName}.html`, makeFileData(bodyObj), (err) => {
-    if (err) sendError(res);
+  if(checkExistance(`/${bodyObj.elementName}.html`)) {
+    sendError(res);
+  } else {
+    fs.writeFile(`public/${bodyObj.elementName}.html`, makeFileData(bodyObj), (err) => {
+      if (err) sendError(res);
 
-    let success = JSON.stringify({"success": true});
-    res.writeHead(200, {
-      'Content-Length' : success.length,
-      'Content-Type' : 'application/json'
+      let success = JSON.stringify({"success": true});
+      res.writeHead(200, {
+        'Content-Length' : success.length,
+        'Content-Type' : 'application/json'
+      });
+      res.end(success);
+
+      updateIndex(bodyObj);
     });
-
-    updateIndex(bodyObj);
-  });
+  }
 };
 
 const makeFileData = (bodyObj) => {
@@ -134,5 +152,55 @@ const makeFileData = (bodyObj) => {
 };
 
 const updateIndex = (bodyObj) => {
+  fs.readFile('public/index.html', (err, data) => {
+    if (err) return sendError(res);
 
+    let newListTag = `    <li>
+      <a href="/${bodyObj.elementName}.html">${bodyObj.elementName}</a>
+    </li>`;
+    let newIndex = data.toString().split('\n');
+    newIndex.splice(12, 0, newListTag);
+    newIndex = newIndex.join('\n').split('\n');
+    let numOfElements = (newIndex.length - 15)/3;
+    newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
+    newFile = newIndex.join('\n');
+
+    fs.writeFile('public/index.html', newFile);
+  });
+};
+
+const checkExistance = (path) => {
+  return fs.existsSync(`public${path}`);
+};
+
+const checkBodyObj = (bodyObj) => {
+  return bodyObj.hasOwnProperty('elementName') && bodyObj.hasOwnProperty('elementSymbol') && bodyObj.hasOwnProperty('elementAtomicNumber') && bodyObj.hasOwnProperty('elementDescription');
+};
+
+const editExistingFile = (body, req, res) => {
+  const bodyData = body.toString().split('&');
+  const bodyObj = {};
+
+  for (let i = 0; i < bodyData.length; i++) {
+    bodyObj[bodyData[i].split('=')[0]] = bodyData[i].split('=')[1].split("+").join(' ');
+  }
+
+  if (checkBodyObj(bodyObj)) {
+    editFile(bodyObj, res);
+  } else {
+    sendError(res);
+  }
+};
+
+const editFile = (bodyObj, res) => {
+  fs.writeFile(`public/${bodyObj.elementName}.html`, makeFileData(bodyObj), (err) => {
+    if (err) sendError(res);
+
+    let success = JSON.stringify({"success": true});
+    res.writeHead(200, {
+      'Content-Length' : success.length,
+      'Content-Type' : 'application/json'
+    });
+    res.end(success);
+  });
 };
