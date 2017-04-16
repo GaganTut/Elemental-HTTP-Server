@@ -89,8 +89,9 @@ const putMethod = (body, req, res) => {
 };
 
 const deleteMethod = (path, res) => {
-  if (checkExistance(`public${path}`)) {
+  if (checkExistance(path)) {
     fs.unlink(`public${path}`);
+    deleteFromIndex(path, res);
   } else {
     let errorMsg = JSON.stringify({"error": "resource " + path + " does not exist"});
     res.writeHead(500, {
@@ -145,7 +146,6 @@ const createFile = (bodyObj, res) => {
       res.end(success);
 
       updateIndexList(bodyObj);
-      updateIndexCounter();
     });
   }
 };
@@ -177,9 +177,10 @@ const updateIndexList = (bodyObj) => {
     </li>`;
     let newIndex = data.toString().split('\n');
     newIndex.splice(12, 0, newListTag);
-    newIndex = newIndex.join('\n').split('\n');
+    newIndex = newIndex.join('\n');
 
-    fs.writeFile('public/index.html', newFile);
+    fs.writeFile('public/index.html', newIndex);
+    updateIndexCounter();
   });
 };
 
@@ -190,9 +191,9 @@ const updateIndexCounter = () => {
     let newIndex = data.toString().split('\n');
     let numOfElements = (newIndex.length - 15)/3;
     newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
-    newFile = newIndex.join('\n');
+    newIndex = newIndex.join('\n');
 
-    fs.writeFile('public/index.html', newFile);
+    fs.writeFile('public/index.html', newIndex);
   });
 };
 
