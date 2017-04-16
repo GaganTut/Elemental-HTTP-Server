@@ -90,7 +90,7 @@ const putMethod = (body, req, res) => {
 
 const deleteMethod = (path, res) => {
   if (checkExistance(path)) {
-    fs.unlink(`public${path}`);
+    //fs.unlink(`public${path}`);
     deleteFromIndex(path, res);
   } else {
     let errorMsg = JSON.stringify({"error": "resource " + path + " does not exist"});
@@ -230,5 +230,20 @@ const editFile = (bodyObj, res) => {
       'Content-Type' : 'application/json'
     });
     res.end(success);
+  });
+};
+
+const deleteFromIndex = (path, res) => {
+  fs.readFile('public/index.html', (err, data) => {
+    if (err) throw err;
+
+    let sliceCut = `<li>\n      <a href="${path}">${path.slice(1, -5)}</a>\n    </li>\n    `;
+    let firstHalf = data.toString().substr(0, data.toString().indexOf(sliceCut));
+    let secondHalf = data.toString().substr(data.toString().indexOf(sliceCut) + sliceCut.length);
+    let newIndex = firstHalf + secondHalf;
+
+    console.log(newIndex);
+    fs.writeFile('public/index.html', newIndex);
+    updateIndexCounter();
   });
 };
