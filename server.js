@@ -58,6 +58,8 @@ const writeCSSResponse = (data, res) => {
   res.end(data);
 };
 
+
+
 const postMethod = (body, res) => {
   const bodyData = body.toString().split('&');
   const bodyObj = {};
@@ -86,6 +88,19 @@ const putMethod = (body, req, res) => {
   }
 };
 
+const deleteMethod = (path, res) => {
+  if (checkExistance(`public${path}`)) {
+    fs.unlink(`public${path}`);
+  } else {
+    let errorMsg = JSON.stringify({"error": "resource " + path + " does not exist"});
+    res.writeHead(500, {
+      'Content-Length' : errorMsg.length,
+      'Content-Type': 'application/json'
+    });
+    res.end(errorMsg);
+  }
+};
+
 const server = http.createServer((req, res) => {
   switch(req.method) {
     case 'GET' :
@@ -106,6 +121,7 @@ const server = http.createServer((req, res) => {
         });
       break;
     case 'DELETE' :
+      deleteMethod(req.url, res);
       break;
   }
 });
@@ -128,7 +144,8 @@ const createFile = (bodyObj, res) => {
       });
       res.end(success);
 
-      updateIndex(bodyObj);
+      updateIndexList(bodyObj);
+      updateIndexCounter();
     });
   }
 };
@@ -151,7 +168,7 @@ const makeFileData = (bodyObj) => {
 </html>`;
 };
 
-const updateIndex = (bodyObj) => {
+const updateIndexList = (bodyObj) => {
   fs.readFile('public/index.html', (err, data) => {
     if (err) return sendError(res);
 
@@ -161,6 +178,16 @@ const updateIndex = (bodyObj) => {
     let newIndex = data.toString().split('\n');
     newIndex.splice(12, 0, newListTag);
     newIndex = newIndex.join('\n').split('\n');
+
+    fs.writeFile('public/index.html', newFile);
+  });
+};
+
+const updateIndexCounter = () => {
+  fs.readFile('public/index.html', (err, data) => {
+    if (err) throw err;
+
+    let newIndex = data.toString().split('\n');
     let numOfElements = (newIndex.length - 15)/3;
     newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
     newFile = newIndex.join('\n');
