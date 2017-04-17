@@ -226,10 +226,13 @@ const deleteFromIndex = (path, res) => {
   fs.readFile('public/index.html', (err, data) => {
     if (err) throw err;
 
-    let sliceCut = `<li>\n      <a href="${path}">${path.slice(1, -5)}</a>\n    </li>\n    `;
-    let firstHalf = data.toString().substr(0, data.toString().indexOf(sliceCut));
-    let secondHalf = data.toString().substr(data.toString().indexOf(sliceCut) + sliceCut.length);
-    let newIndex = (firstHalf + secondHalf).split('\n');
+    let newIndex = data.toString().split('\n');
+    for (let i = 0; i < newIndex.length; i++) {
+      if (newIndex[i].indexOf(path.slice(1, -5)) > -1) {
+        newIndex.splice(i - 1, 3);
+        break;
+      }
+    }
 
     let numOfElements = (newIndex.length - 15)/3;
     newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
