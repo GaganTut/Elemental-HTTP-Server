@@ -56,6 +56,24 @@ const deleteMethod = (path, res) => {
     res.end(errorMsg);
   }
 };
+
+//BASIC AUTHENTICATION
+
+const authenticateRequest = (req) => {
+  let decodedAttempt = new Buffer(req.headers.authorization.slice(6), 'base64').toString();
+
+  if(decodedAttempt === 'basic:authentication') {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+const wrongAuthResponse = (res) => {
+  res.writeHead(401, {});
+  res.end('<html><body>Invalid Authentication Credentials</body></html>');
+};
+
 //FUNCTION FOR WHEN SERVER STARTS AND RECEIVES REQUESTS
 const server = http.createServer((req, res) => {
   switch(req.method) {
@@ -63,21 +81,33 @@ const server = http.createServer((req, res) => {
       getMethod(req.url, res);
       break;
     case 'POST' :
-      if (req.url !== '/elements') {
-        sendError(res);
+      if (authenticateRequest(req)) {
+        if (req.url !== '/elements') {
+          sendError(res);
+        } else {
+          req.on('data', (data) => {
+            postMethod(data, res);
+          });
+        }
       } else {
-        req.on('data', (data) => {
-          postMethod(data, res);
-        });
+        wrongAuthResponse(res);
       }
       break;
     case 'PUT' :
-      req.on('data', (data) => {
+      if (authenticateRequest(req)) {
+        req.on('data', (data) => {
           putMethod(data, req, res);
         });
+      } else {
+        wrongAuthResponse(res);
+      }
       break;
     case 'DELETE' :
-      deleteMethod(req.url, res);
+      if (authenticateRequest(req)) {
+        deleteMethod(req.url, res);
+      } else {
+        wrongAuthResponse(res);
+      }
       break;
   }
 });
