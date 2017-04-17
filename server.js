@@ -2,6 +2,9 @@
 const http = require('http');
 const fs = require('fs');
 
+//THE FOUR BASIC FUNCTIONS
+
+//GET METHOD
 const getMethod = (path, res) => {
   if (path.indexOf('/css') === 0) {
     return findCSS(path, res);
@@ -12,54 +15,7 @@ const getMethod = (path, res) => {
     return writeSuccessResponse(data, res);
   });
 };
-
-const checkPath = (path) => {
-  if (path === '/') {
-    path = '/index.html';
-  }
-  return path;
-};
-
-const writeSuccessResponse = (data, res) => {
-  res.writeHead(200, {
-    'Content-Length' : data.length,
-    'Content-Type' : 'text/html'
-  });
-  res.end(data);
-};
-
-const writeErrorResponse = (data, res) => {
-  res.writeHead(404, {
-    'Content-Length' : data.length,
-    'Content-Type' : 'text/html'
-  });
-  res.end(data);
-};
-
-const sendError = (res) => {
-  fs.readFile(`public/404.html`, (err, data) => {
-    return writeErrorResponse(data, res);
-  });
-};
-
-const findCSS = (path, res) => {
-  fs.readFile(`public${checkPath(path)}`, (err, data) => {
-    if (err) return;
-
-    return writeCSSResponse(data, res);
-  });
-};
-
-const writeCSSResponse = (data, res) => {
-  res.writeHead(200, {
-    'Content-Length' : data.length,
-    'Content-Type' : 'text/css'
-  });
-  res.end(data);
-};
-
-
-
+//POST METHOD
 const postMethod = (body, res) => {
   const bodyData = body.toString().split('&');
   const bodyObj = {};
@@ -67,14 +23,13 @@ const postMethod = (body, res) => {
   for (let i = 0; i < bodyData.length; i++) {
     bodyObj[bodyData[i].split('=')[0]] = bodyData[i].split('=')[1].split("+").join(' ');
   }
-
   if (checkBodyObj(bodyObj)) {
     createFile(bodyObj, res);
   } else {
     sendError(res);
   }
 };
-
+//PUT METHOD
 const putMethod = (body, req, res) => {
   if (checkExistance(req.url)) {
     editExistingFile(body, req, res);
@@ -87,7 +42,7 @@ const putMethod = (body, req, res) => {
     res.end(errorMsg);
   }
 };
-
+//DELETE METHOD
 const deleteMethod = (path, res) => {
   if (checkExistance(path)) {
     fs.unlink(`public${path}`);
@@ -101,7 +56,7 @@ const deleteMethod = (path, res) => {
     res.end(errorMsg);
   }
 };
-
+//FUNCTION FOR WHEN SERVER STARTS AND RECEIVES REQUESTS
 const server = http.createServer((req, res) => {
   switch(req.method) {
     case 'GET' :
@@ -130,7 +85,57 @@ const server = http.createServer((req, res) => {
 server.listen(8888, () => {
   console.log("Server has started!");
 });
+//ALL HELPER FUNCTIONS
 
+//CHECK PATH FOR GET FUNCTION TO SEND TO INDEX WHEN NO PATH IS SPECIFIED
+const checkPath = (path) => {
+  if (path === '/') {
+    path = '/index.html';
+  }
+  return path;
+};
+//RETURN SUCCESSFUL GET RESPONSE
+const writeSuccessResponse = (data, res) => {
+  res.writeHead(200, {
+    'Content-Length' : data.length,
+    'Content-Type' : 'text/html'
+  });
+  res.end(data);
+};
+
+//FIND AND READ CSS FILE
+const findCSS = (path, res) => {
+  fs.readFile(`public${checkPath(path)}`, (err, data) => {
+    if (err) return;
+
+    return writeCSSResponse(data, res);
+  });
+};
+//RETURN CSS FILE TO REQUESTER
+const writeCSSResponse = (data, res) => {
+  res.writeHead(200, {
+    'Content-Length' : data.length,
+    'Content-Type' : 'text/css'
+  });
+  res.end(data);
+};
+
+//READ FILE TO PREPARE 404 ERROR PAGE
+const sendError = (res) => {
+  fs.readFile(`public/404.html`, (err, data) => {
+    return writeErrorResponse(data, res);
+  });
+};
+//RETURN 404 ERROR PAGE BACK TO REQUESTER
+const writeErrorResponse = (data, res) => {
+  res.writeHead(404, {
+    'Content-Length' : data.length,
+    'Content-Type' : 'text/html'
+  });
+  res.end(data);
+};
+
+//CHECK IF FILE EXISTS BEFORE WRITING AND SENDING SUCCESS OR FAILURE TO A POST REQUEST
 const createFile = (bodyObj, res) => {
   if(checkExistance(`/${bodyObj.elementName}.html`)) {
     sendError(res);
@@ -144,12 +149,12 @@ const createFile = (bodyObj, res) => {
         'Content-Type' : 'application/json'
       });
       res.end(success);
-
       updateIndexList(bodyObj);
     });
   }
 };
 
+//WRITE THE ACTUAL FILE FOR THE POST REQUEST
 const makeFileData = (bodyObj) => {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -168,6 +173,7 @@ const makeFileData = (bodyObj) => {
 </html>`;
 };
 
+//UPDATES INDEX PAGE WHEN NEW FILE IS POSTED
 const updateIndexList = (bodyObj) => {
   fs.readFile('public/index.html', (err, data) => {
     if (err) return sendError(res);
@@ -186,14 +192,16 @@ const updateIndexList = (bodyObj) => {
   });
 };
 
+//CHECKS IF A FILE EXISTS- RETURNS BOOLEAN
 const checkExistance = (path) => {
   return fs.existsSync(`public${path}`);
 };
-
+//CHECKS BODY OBJECT TO MAKE SURE IT HAS ALL THE NECESSARY PROPERTIES NEEDED TO CREATE FILE
 const checkBodyObj = (bodyObj) => {
   return bodyObj.hasOwnProperty('elementName') && bodyObj.hasOwnProperty('elementSymbol') && bodyObj.hasOwnProperty('elementAtomicNumber') && bodyObj.hasOwnProperty('elementDescription');
 };
 
+//REWRITES EXISTING FILE WHEN A PUT REQUEST IS RECEIVED
 const editExistingFile = (body, req, res) => {
   const bodyData = body.toString().split('&');
   const bodyObj = {};
@@ -201,14 +209,13 @@ const editExistingFile = (body, req, res) => {
   for (let i = 0; i < bodyData.length; i++) {
     bodyObj[bodyData[i].split('=')[0]] = bodyData[i].split('=')[1].split("+").join(' ');
   }
-
   if (checkBodyObj(bodyObj)) {
     editFile(bodyObj, res);
   } else {
     sendError(res);
   }
 };
-
+//SENDS SUCCESS OR ERROR WHEN PUT REQUEST FILE IS ACTUALLY APPLIED
 const editFile = (bodyObj, res) => {
   fs.writeFile(`public/${bodyObj.elementName}.html`, makeFileData(bodyObj), (err) => {
     if (err) sendError(res);
@@ -222,6 +229,7 @@ const editFile = (bodyObj, res) => {
   });
 };
 
+//DELETES ELEMENT FROM INDEX.HTML WHEN IT IS REMOVED FORM FILE SYSTEM THROUGH DELETE REQUEST
 const deleteFromIndex = (path, res) => {
   fs.readFile('public/index.html', (err, data) => {
     if (err) throw err;
@@ -233,7 +241,6 @@ const deleteFromIndex = (path, res) => {
         break;
       }
     }
-
     let numOfElements = (newIndex.length - 15)/3;
     newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
     newIndex = newIndex.join('\n');
