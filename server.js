@@ -90,7 +90,7 @@ const putMethod = (body, req, res) => {
 
 const deleteMethod = (path, res) => {
   if (checkExistance(path)) {
-    //fs.unlink(`public${path}`);
+    fs.unlink(`public${path}`);
     deleteFromIndex(path, res);
   } else {
     let errorMsg = JSON.stringify({"error": "resource " + path + " does not exist"});
@@ -177,18 +177,7 @@ const updateIndexList = (bodyObj) => {
     </li>`;
     let newIndex = data.toString().split('\n');
     newIndex.splice(12, 0, newListTag);
-    newIndex = newIndex.join('\n');
-
-    fs.writeFile('public/index.html', newIndex);
-    updateIndexCounter();
-  });
-};
-
-const updateIndexCounter = () => {
-  fs.readFile('public/index.html', (err, data) => {
-    if (err) throw err;
-
-    let newIndex = data.toString().split('\n');
+    newIndex = newIndex.join('\n').split('\n');
     let numOfElements = (newIndex.length - 15)/3;
     newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
     newIndex = newIndex.join('\n');
@@ -240,10 +229,18 @@ const deleteFromIndex = (path, res) => {
     let sliceCut = `<li>\n      <a href="${path}">${path.slice(1, -5)}</a>\n    </li>\n    `;
     let firstHalf = data.toString().substr(0, data.toString().indexOf(sliceCut));
     let secondHalf = data.toString().substr(data.toString().indexOf(sliceCut) + sliceCut.length);
-    let newIndex = firstHalf + secondHalf;
+    let newIndex = (firstHalf + secondHalf).split('\n');
 
-    console.log(newIndex);
+    let numOfElements = (newIndex.length - 15)/3;
+    newIndex.splice(10, 1, `  <h3>There are ${numOfElements}</h3>`);
+    newIndex = newIndex.join('\n');
     fs.writeFile('public/index.html', newIndex);
-    updateIndexCounter();
+
+    let success = JSON.stringify({"success": true});
+      res.writeHead(200, {
+        'Content-Length' : success.length,
+        'Content-Type' : 'application/json'
+      });
+      res.end(success);
   });
 };
