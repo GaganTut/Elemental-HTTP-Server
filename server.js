@@ -70,7 +70,9 @@ const authenticateRequest = (req) => {
 };
 
 const wrongAuthResponse = (res) => {
-  res.writeHead(401, {});
+  res.writeHead(401, {
+    "Basic-realm": "Secure Area"
+  });
   res.end('<html><body>Invalid Authentication Credentials</body></html>');
 };
 
